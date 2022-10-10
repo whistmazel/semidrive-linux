@@ -133,6 +133,12 @@ struct uart_8250_port {
 	int			(*dl_read)(struct uart_8250_port *);
 	void			(*dl_write)(struct uart_8250_port *, int);
 
+        spinlock_t              tx_lock;
+        int                     rs485_tx_en;
+	struct delayed_work     tx_off_work;
+	void			(*rs485_gpio_rx_en)(struct uart_8250_port *, int);
+	void			(*rs485_gpio_tx_en)(struct uart_8250_port *, int);
+
 	struct uart_8250_em485 *em485;
 };
 

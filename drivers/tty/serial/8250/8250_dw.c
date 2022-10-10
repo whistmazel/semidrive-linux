@@ -28,6 +28,8 @@
 #include <linux/clk.h>
 #include <linux/reset.h>
 #include <linux/pm_runtime.h>
+#include <linux/gpio.h>
+#include <linux/of_gpio.h>
 
 #include <asm/byteorder.h>
 
@@ -58,12 +60,39 @@
 #define DW_UART_MCR_SIRE		BIT(6)
 
 /* RS485 config info */
-#define DW_RS485_FULL_DULPLEX_MODE		0
+#define DW_RS485_FULL_DULPLEX_MODE	0
 #define DW_RS485_SW_HALF_DULPLEX_MODE	1
 #define DW_RS485_HW_HALF_DULPLEX_MODE	2
 
 #define DW_RS485_EN_POLARITY_IS_HIGH	1
-#define DW_RS485_EN_POLARITY_IS_LOW		0
+#define DW_RS485_EN_POLARITY_IS_LOW	0
+
+/* RS485 ctrl type */
+#define RS485_CTRL_BY_SOC      1
+#define RS485_CTRL_BY_GPIO     2
+
+struct internal_485_ctrl {
+	unsigned int re_polarity:1;
+	unsigned int de_polarity:1;
+	unsigned int xfer_mode:2;
+	unsigned char de_assert_time;
+	unsigned char de_deassert_time;
+	unsigned short de2re_turn_around_time;
+	unsigned short re2de_turn_around_time;
+};
+
+struct external_485_ctrl {
+	unsigned int re_gpio;
+	unsigned int re_polarity;
+	unsigned int de_gpio;
+	unsigned int de_polarity;
+
+};
+
+union rs485_ctrl_config {
+        struct internal_485_ctrl  in;
+	struct external_485_ctrl  ext;
+};
 
 struct dw8250_data {
 	u8			usr_reg;
@@ -79,14 +108,8 @@ struct dw8250_data {
 	unsigned int uart_16550_compatible:1;
 	unsigned int dma_not_used:1;
 
-	unsigned int is_configed_as_rs485:1;
-	unsigned int re_polarity:1;
-	unsigned int de_polarity:1;
-	unsigned int xfer_mode:2;
-	unsigned char de_assert_time;
-	unsigned char de_deassert_time;
-	unsigned short de2re_turn_around_time;
-	unsigned short re2de_turn_around_time;
+	int rs485_ctrl_type;
+	union rs485_ctrl_config  rs485_conf;
 };
 
 static inline int dw8250_modify_msr(struct uart_port *p,
@@ -427,7 +450,7 @@ static void dw8250_setup_port(struct uart_port *p)
 		up->capabilities |= UART_CAP_IRDA;
 }
 
-static int dw8250_rs485_of_info_parse(struct device *dev, struct dw8250_data *data)
+static int dw8250_rs485_soc_of_info_parse(struct device *dev, struct dw8250_data *data)
 {
 	int err;
 	u32 val;
@@ -439,7 +462,7 @@ static int dw8250_rs485_of_info_parse(struct device *dev, struct dw8250_data *da
 			dev_err(dev, "%d is an invalid 485_re_polarity_val\n", val);
 			return -EINVAL;
 		}
-		data->re_polarity = val;
+		data->rs485_conf.in.re_polarity = val;
 	} else {
 		dev_err(dev, "get property snps,485_re_polarity_val failed\n");
 		return err;
@@ -452,7 +475,7 @@ static int dw8250_rs485_of_info_parse(struct device *dev, struct dw8250_data *da
 			dev_err(dev, "%d is an invalid 485_de_polarity_val\n", val);
 			return -EINVAL;
 		}
-		data->de_polarity = val;
+		data->rs485_conf.in.de_polarity = val;
 	} else {
 		dev_err(dev, "get property snps,485_de_polarity_val failed\n");
 		return err;
@@ -466,7 +489,7 @@ static int dw8250_rs485_of_info_parse(struct device *dev, struct dw8250_data *da
 			dev_err(dev, "%d is an invalid xfer_mode\n", val);
 			return -EINVAL;
 		}
-		data->xfer_mode = val;
+		data->rs485_conf.in.xfer_mode = val;
 	} else {
 		dev_err(dev, "get property snps,485_xfer_mode failed\n");
 		return err;
@@ -474,7 +497,7 @@ static int dw8250_rs485_of_info_parse(struct device *dev, struct dw8250_data *da
 
 	err = device_property_read_u32(dev, "snps,485_de_assert_time", &val);
 	if (!err)
-		data->de_assert_time = val;
+		data->rs485_conf.in.de_assert_time = val;
 	else {
 		dev_err(dev, "get property snps,485_de_assert_time failed\n");
 		return err;
@@ -482,7 +505,7 @@ static int dw8250_rs485_of_info_parse(struct device *dev, struct dw8250_data *da
 
 	err = device_property_read_u32(dev, "snps,485_de_deassert_time", &val);
 	if (!err)
-		data->de_deassert_time = val;
+		data->rs485_conf.in.de_deassert_time = val;
 	else {
 		dev_err(dev, "get property snps,485_de_deassert_time failed\n");
 		return err;
@@ -490,7 +513,7 @@ static int dw8250_rs485_of_info_parse(struct device *dev, struct dw8250_data *da
 
 	err = device_property_read_u32(dev, "snps,485_de2re_turn_around_time", &val);
 	if (!err)
-		data->de2re_turn_around_time = val;
+		data->rs485_conf.in.de2re_turn_around_time = val;
 	else {
 		dev_err(dev, "get property snps,485_de2re_turn_around_time failed\n");
 		return err;
@@ -498,7 +521,7 @@ static int dw8250_rs485_of_info_parse(struct device *dev, struct dw8250_data *da
 
 	err = device_property_read_u32(dev, "snps,485_re2de_turn_around_time", &val);
 	if (!err)
-		data->re2de_turn_around_time = val;
+		data->rs485_conf.in.re2de_turn_around_time = val;
 	else {
 		dev_err(dev, "get property snps,485_re2de_turn_around_time failed\n");
 		return err;
@@ -507,50 +530,52 @@ static int dw8250_rs485_of_info_parse(struct device *dev, struct dw8250_data *da
 	return 0;
 }
 
-static void dw8250_rs485_init(struct uart_8250_port *p, struct dw8250_data *data)
+static void dw8250_rs485_soc_init(struct uart_8250_port *p, struct dw8250_data *data)
 {
 	int value = 0;
+	int xfer_mode = 0;
 
 	value = serial_in(p, UART_TCR_DW);
 	value |= UART_TCR_DW_RS485_EN;
-	if (data->re_polarity)
+	if (data->rs485_conf.in.re_polarity)
 		value |= UART_TCR_DW_RE_POL;
 	else
 		value &= ~UART_TCR_DW_RE_POL;
-	if (data->de_polarity)
+	if (data->rs485_conf.in.de_polarity)
 		value |= UART_TCR_DW_DE_POL;
 	else
 		value &= ~UART_TCR_DW_DE_POL;
-	if (data->xfer_mode) {
+	if (data->rs485_conf.in.xfer_mode) {
 		value &= ~UART_TCR_DW_XFER_MODE;
-		value |= (data->xfer_mode << 3);
+		value |= (data->rs485_conf.in.xfer_mode << 3);
 	}
 	serial_out(p, UART_TCR_DW, value);
 
 	value = serial_in(p, UART_DET);
-	if (data->de_assert_time) {
+	if (data->rs485_conf.in.de_assert_time) {
 		value &= ~UART_DET_DE_ASSERTION_TIME;
-		value |= data->de_assert_time;
+		value |= data->rs485_conf.in.de_assert_time;
 	}
-	if (data->de_deassert_time) {
+	if (data->rs485_conf.in.de_deassert_time) {
 		value &= ~UART_DET_DE_DEASSERTION_TIME;
-		value |= (data->de_deassert_time << 16);
+		value |= (data->rs485_conf.in.de_deassert_time << 16);
 	}
 	serial_out(p, UART_DET, value);
 
 	value = serial_in(p, UART_TAT);
-	if (data->de2re_turn_around_time) {
+	if (data->rs485_conf.in.de2re_turn_around_time) {
 		value &= ~UART_TAT_DE_TO_RE;
-		value |= data->de2re_turn_around_time;
+		value |= data->rs485_conf.in.de2re_turn_around_time;
 	}
-	if (data->re2de_turn_around_time) {
+	if (data->rs485_conf.in.re2de_turn_around_time) {
 		value &= ~UART_TAT_RE_TO_DE;
-		value |= (data->re2de_turn_around_time << 16);
+		value |= (data->rs485_conf.in.re2de_turn_around_time << 16);
 	}
 	serial_out(p, UART_TAT, value);
 
 	/* initialize DE&RE ctl in according to the xfer mode */
-	if (data->xfer_mode == DW_RS485_FULL_DULPLEX_MODE) {
+	xfer_mode = data->rs485_conf.in.xfer_mode;
+	if (xfer_mode == DW_RS485_FULL_DULPLEX_MODE) {
 		value = serial_in(p, UART_RE_EN);
 		value |= UART_RE_EN_CTL;
 		serial_out(p, UART_RE_EN, value);
@@ -558,8 +583,8 @@ static void dw8250_rs485_init(struct uart_8250_port *p, struct dw8250_data *data
 		value = serial_in(p, UART_DE_EN);
 		value |= UART_DE_EN_CTL;
 		serial_out(p, UART_DE_EN, value);
-	} else if (data->xfer_mode == DW_RS485_SW_HALF_DULPLEX_MODE
-			|| data->xfer_mode == DW_RS485_HW_HALF_DULPLEX_MODE) {
+	} else if (xfer_mode == DW_RS485_SW_HALF_DULPLEX_MODE
+			|| xfer_mode == DW_RS485_HW_HALF_DULPLEX_MODE) {
 		value = serial_in(p, UART_RE_EN);
 		value |= UART_RE_EN_CTL;
 		serial_out(p, UART_RE_EN, value);
@@ -567,6 +592,139 @@ static void dw8250_rs485_init(struct uart_8250_port *p, struct dw8250_data *data
 		value = serial_in(p, UART_DE_EN);
 		value &= ~UART_DE_EN_CTL;
 		serial_out(p, UART_DE_EN, value);
+	}
+}
+
+static int dw8250_rs485_gpio_of_info_parse(struct device *dev, struct dw8250_data *data)
+{
+	int err;
+	u32 val;
+	int gpio;
+
+	err = device_property_read_u32(dev, "sdrv,485_re_polarity_val", &val);
+	if (!err) {
+		if (val != DW_RS485_EN_POLARITY_IS_HIGH
+				&& val != DW_RS485_EN_POLARITY_IS_LOW) {
+			dev_err(dev, "%d is an invalid 485_re_polarity_val\n", val);
+			return -EINVAL;
+		}
+		data->rs485_conf.ext.re_polarity = val;
+	} else {
+		dev_err(dev, "get property sdrv,485_re_polarity_val failed\n");
+		return err;
+	}
+
+	err = device_property_read_u32(dev, "sdrv,485_de_polarity_val", &val);
+	if (!err) {
+		if (val != DW_RS485_EN_POLARITY_IS_HIGH
+				&& val != DW_RS485_EN_POLARITY_IS_LOW) {
+			dev_err(dev, "%d is an invalid 485_de_polarity_val\n", val);
+			return -EINVAL;
+		}
+		data->rs485_conf.ext.de_polarity = val;
+	} else {
+		dev_err(dev, "get property sdrv,485_de_polarity_val failed\n");
+		return err;
+	}
+
+	gpio = of_get_named_gpio(dev->of_node, "sdrv,485_re_gpio", 0);
+	if (gpio < 0) {
+		dev_err(dev, "get property sdrv,485_re_gpio failed\n");
+		return gpio;
+	}
+	data->rs485_conf.ext.re_gpio = gpio;
+
+	gpio = of_get_named_gpio(dev->of_node, "sdrv,485_de_gpio", 0);
+	if (gpio < 0) {
+		dev_err(dev, "get property sdrv,485_de_gpio failed\n");
+		return gpio;
+	}
+	data->rs485_conf.ext.de_gpio = gpio;
+
+	return 0;
+}
+
+static int dw8250_rs485_gpio_init(struct device *dev, struct dw8250_data *data)
+{
+	int ret;
+
+        /* case1: using same gpio */
+	if (data->rs485_conf.ext.de_gpio == data->rs485_conf.ext.re_gpio) {
+		ret = gpio_request(data->rs485_conf.ext.de_gpio, "rs485_re_de_ctrl");
+		if (ret <0) {
+			dev_err(dev, "request gpio %d failed\n",data->rs485_conf.ext.de_gpio);
+                        return ret;
+		}
+
+		if(data->rs485_conf.ext.re_polarity == data->rs485_conf.ext.de_polarity) {
+			dev_err(dev, "invalid re&de polarity,they must be different when using same gpio\n");
+			gpio_free(data->rs485_conf.ext.de_gpio);
+                        return ret;
+		}
+
+                /* re is enabled by default  */
+		if (data->rs485_conf.ext.re_polarity == DW_RS485_EN_POLARITY_IS_LOW)
+			gpio_direction_output(data->rs485_conf.ext.re_gpio, 0);
+		else
+			gpio_direction_output(data->rs485_conf.ext.re_gpio, 1);
+	} else { /* case2: using different gpio */
+		ret = gpio_request(data->rs485_conf.ext.re_gpio, "rs485_re_ctrl");
+		if (ret <0) {
+			dev_err(dev, "request gpio %d failed\n",data->rs485_conf.ext.re_gpio);
+                        return ret;
+		}
+
+		ret = gpio_request(data->rs485_conf.ext.de_gpio, "rs485_de_ctrl");
+		if (ret <0) {
+			dev_err(dev, "request gpio %d failed\n",data->rs485_conf.ext.de_gpio);
+                        return ret;
+		}
+
+                /* re is enabled by default  */
+		if (data->rs485_conf.ext.re_polarity == DW_RS485_EN_POLARITY_IS_LOW)
+			gpio_direction_output(data->rs485_conf.ext.re_gpio, 0);
+		else
+			gpio_direction_output(data->rs485_conf.ext.re_gpio, 1);
+
+		if (data->rs485_conf.ext.de_polarity == DW_RS485_EN_POLARITY_IS_LOW)
+			gpio_direction_output(data->rs485_conf.ext.de_gpio, 1);
+		else
+			gpio_direction_output(data->rs485_conf.ext.de_gpio, 0);
+	}
+
+	return 0;
+}
+
+static void dw8250_rs485_gpio_tx_en(struct uart_8250_port *uart, int enable_tx)
+{
+        struct uart_port *p = &uart->port;
+	struct dw8250_data *d = p->private_data;
+
+	if (enable_tx == 1) {
+		if (d->rs485_conf.ext.re_gpio != d->rs485_conf.ext.de_gpio) {
+			if (d->rs485_conf.ext.re_polarity == DW_RS485_EN_POLARITY_IS_LOW)
+				gpio_set_value(d->rs485_conf.ext.re_gpio, 1);
+			else
+				gpio_set_value(d->rs485_conf.ext.re_gpio, 0);
+		}
+
+		if (d->rs485_conf.ext.de_polarity == DW_RS485_EN_POLARITY_IS_LOW)
+			gpio_set_value(d->rs485_conf.ext.de_gpio, 0);
+		else
+			gpio_set_value(d->rs485_conf.ext.de_gpio, 1);
+	} else {
+		if (d->rs485_conf.ext.de_polarity == DW_RS485_EN_POLARITY_IS_LOW) {
+			gpio_set_value(d->rs485_conf.ext.de_gpio, 1);
+		}
+		else
+			gpio_set_value(d->rs485_conf.ext.de_gpio, 0);
+
+		if (d->rs485_conf.ext.re_gpio != d->rs485_conf.ext.de_gpio) {
+			if (d->rs485_conf.ext.re_polarity == DW_RS485_EN_POLARITY_IS_LOW)
+				gpio_set_value(d->rs485_conf.ext.re_gpio, 0);
+			else
+				gpio_set_value(d->rs485_conf.ext.re_gpio, 1);
+		}
 	}
 }
 
@@ -580,6 +738,7 @@ static int dw8250_probe(struct platform_device *pdev)
 	struct dw8250_data *data;
 	int err;
 	u32 val;
+	bool ctrl_type = 0;
 
 	if (!regs) {
 		dev_err(dev, "no registers defined\n");
@@ -625,8 +784,18 @@ static int dw8250_probe(struct platform_device *pdev)
 	data->uart_16550_compatible = device_property_read_bool(dev,
 						"snps,uart-16550-compatible");
 
-	data->is_configed_as_rs485 = device_property_read_bool(dev,
+	ctrl_type = device_property_read_bool(dev,
 			"snps,config-as-485-function");
+	if (ctrl_type)
+		data->rs485_ctrl_type = RS485_CTRL_BY_SOC;
+
+	ctrl_type = device_property_read_bool(dev,
+			"sdrv,config_gpio_ctrl_485");
+	if (ctrl_type && (data->rs485_ctrl_type != 0)) {
+		dev_err(dev, "rs485: only one mode can be config\n");
+		return -EINVAL;
+	} else if (ctrl_type)
+		data->rs485_ctrl_type = RS485_CTRL_BY_GPIO;
 
 	err = device_property_read_u32(dev, "reg-shift", &val);
 	if (!err)
@@ -724,9 +893,13 @@ static int dw8250_probe(struct platform_device *pdev)
 		uart.dma = &data->dma;
 	}
 
-	if (data->is_configed_as_rs485) {
-		dw8250_rs485_of_info_parse(dev, data);
-		dw8250_rs485_init(&uart, data);
+	if (data->rs485_ctrl_type == RS485_CTRL_BY_SOC) {
+		dw8250_rs485_soc_of_info_parse(dev, data);
+		dw8250_rs485_soc_init(&uart, data);
+	} else if (data->rs485_ctrl_type == RS485_CTRL_BY_GPIO) {
+		dw8250_rs485_gpio_of_info_parse(dev, data);
+		dw8250_rs485_gpio_init(dev, data);
+		uart.rs485_gpio_tx_en = dw8250_rs485_gpio_tx_en;
 	}
 
 	data->line = serial8250_register_8250_port(&uart);

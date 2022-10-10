@@ -953,6 +953,32 @@ static struct uart_8250_port *serial8250_find_match_or_unused(struct uart_port *
 	return NULL;
 }
 
+static void serial8250_rs485_ext_tx_off_work(struct work_struct *work)
+{
+	struct uart_8250_port *uart = container_of(work, struct uart_8250_port,
+						   tx_off_work.work);
+	unsigned long flags;
+
+	spin_lock_irqsave(&uart->tx_lock, flags);
+
+	if (uart->rs485_tx_en && uart->rs485_gpio_tx_en) {
+		uart->rs485_gpio_tx_en(uart, 0);
+		uart->rs485_tx_en = 0;
+	}
+
+	spin_unlock_irqrestore(&uart->tx_lock, flags);
+}
+
+static void serial8250_rs485_ext_ctrl_init(struct uart_8250_port *uart)
+{
+	if (uart == NULL)
+		return -EINVAL;
+
+	spin_lock_init(&uart->tx_lock);
+	uart->rs485_tx_en = 0;
+	INIT_DELAYED_WORK(&uart->tx_off_work, serial8250_rs485_ext_tx_off_work);
+}
+
 /**
  *	serial8250_register_8250_port - register a serial port
  *	@up: serial port template
@@ -1001,6 +1027,10 @@ int serial8250_register_8250_port(struct uart_8250_port *up)
 		uart->port.rs485_config	= up->port.rs485_config;
 		uart->port.rs485	= up->port.rs485;
 		uart->dma		= up->dma;
+		uart->rs485_gpio_tx_en	= up->rs485_gpio_tx_en;
+
+		if (uart->rs485_gpio_tx_en)
+			serial8250_rs485_ext_ctrl_init(uart);
 
 		/* Take tx_loadsz from fifosize if it wasn't set separately */
 		if (uart->port.fifosize && !uart->tx_loadsz)

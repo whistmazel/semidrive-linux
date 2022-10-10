@@ -1876,12 +1876,25 @@ int serial8250_handle_irq(struct uart_port *port, unsigned int iir)
 
 	if (status & (UART_LSR_DR | UART_LSR_BI) &&
 	    iir & UART_IIR_RDI) {
-		if (!up->dma || handle_rx_dma(up, iir))
+		if (!up->dma || handle_rx_dma(up, iir)) {
 			status = serial8250_rx_chars(up, status);
+		}
 	}
 	serial8250_modem_status(up);
-	if ((!up->dma || up->dma->tx_err) && (status & UART_LSR_THRE))
+	if ((!up->dma || up->dma->tx_err) && (status & UART_LSR_THRE)) {
+		if(up->rs485_gpio_tx_en) {
+			spin_lock(&up->tx_lock);
+			if (up->rs485_tx_en == 0) {
+			        up->rs485_gpio_tx_en(up, 1);
+			        up->rs485_tx_en = 1;
+		        }
+		        spin_unlock(&up->tx_lock);
+		}
 		serial8250_tx_chars(up);
+
+		if(up->rs485_gpio_tx_en)
+		        schedule_delayed_work(&up->tx_off_work, usecs_to_jiffies(200));
+	}
 
 	spin_unlock_irqrestore(&port->lock, flags);
 	return 1;

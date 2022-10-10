@@ -26,6 +26,10 @@ static void __dma_tx_complete(void *param)
 	dma_sync_single_for_cpu(dma->txchan->device->dev, dma->tx_addr,
 				UART_XMIT_SIZE, DMA_TO_DEVICE);
 
+	/* rs485 ext gpio ctrl off */
+	if(p->rs485_gpio_tx_en)
+	        schedule_delayed_work(&p->tx_off_work, usecs_to_jiffies(200));
+
 	spin_lock_irqsave(&p->port.lock, flags);
 
 	dma->tx_running = 0;
@@ -90,6 +94,16 @@ int serial8250_tx_dma(struct uart_8250_port *p)
 	if (!desc) {
 		ret = -EBUSY;
 		goto err;
+	}
+
+	/* rs485 ext gpio ctrl on */
+	if(p->rs485_gpio_tx_en) {
+		spin_lock(&p->tx_lock);
+		if (p->rs485_tx_en == 0) {
+		        p->rs485_gpio_tx_en(p, 1);
+		        p->rs485_tx_en = 1;
+	        }
+	        spin_unlock(&p->tx_lock);
 	}
 
 	dma->tx_running = 1;
