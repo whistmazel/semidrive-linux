@@ -108,6 +108,8 @@ struct can_frame {
 	__u8    __res0;  /* reserved / padding */
 	__u8    __res1;  /* reserved / padding */
 	__u8    data[CAN_MAX_DLEN] __attribute__((aligned(8)));
+	__u8	flags;
+	__u8	len;
 };
 
 /*
