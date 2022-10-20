@@ -4029,6 +4029,7 @@ int sdhci_setup_host(struct sdhci_host *host)
 		}
 	}
 
+	printk("mmc : comment UHS speed!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 	if (host->quirks2 & SDHCI_QUIRK2_NO_1_8_V) {
 		host->caps1 &= ~(SDHCI_SUPPORT_SDR104 | SDHCI_SUPPORT_SDR50 |
 				 SDHCI_SUPPORT_DDR50);
@@ -4045,20 +4046,20 @@ int sdhci_setup_host(struct sdhci_host *host)
 	}
 
 	/* Any UHS-I mode in caps implies SDR12 and SDR25 support. */
-	if (host->caps1 & (SDHCI_SUPPORT_SDR104 | SDHCI_SUPPORT_SDR50 |
-			   SDHCI_SUPPORT_DDR50))
-		mmc->caps |= MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25;
+//	if (host->caps1 & (SDHCI_SUPPORT_SDR104 | SDHCI_SUPPORT_SDR50 |
+//			   SDHCI_SUPPORT_DDR50))
+//		mmc->caps |= MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25;
 
 	/* SDR104 supports also implies SDR50 support */
 	if (host->caps1 & SDHCI_SUPPORT_SDR104) {
-		mmc->caps |= MMC_CAP_UHS_SDR104 | MMC_CAP_UHS_SDR50;
+	//	mmc->caps |= MMC_CAP_UHS_SDR104 | MMC_CAP_UHS_SDR50;
 		/* SD3.0: SDR104 is supported so (for eMMC) the caps2
 		 * field can be promoted to support HS200.
 		 */
 		if (!(host->quirks2 & SDHCI_QUIRK2_BROKEN_HS200))
 			mmc->caps2 |= MMC_CAP2_HS200;
 	} else if (host->caps1 & SDHCI_SUPPORT_SDR50) {
-		mmc->caps |= MMC_CAP_UHS_SDR50;
+//		mmc->caps |= MMC_CAP_UHS_SDR50;
 	}
 
 	if (host->quirks2 & SDHCI_QUIRK2_CAPS_BIT63_FOR_HS400 &&
@@ -4070,11 +4071,11 @@ int sdhci_setup_host(struct sdhci_host *host)
 	     !regulator_is_supported_voltage(mmc->supply.vqmmc, 1100000,
 					     1300000)))
 		mmc->caps2 &= ~MMC_CAP2_HSX00_1_2V;
-
+#if 0
 	if ((host->caps1 & SDHCI_SUPPORT_DDR50) &&
 	    !(host->quirks2 & SDHCI_QUIRK2_BROKEN_DDR50))
 		mmc->caps |= MMC_CAP_UHS_DDR50;
-
+#endif
 	/* Does the host need tuning for SDR50? */
 	if (host->caps1 & SDHCI_USE_SDR50_TUNING)
 		host->flags |= SDHCI_SDR50_NEEDS_TUNING;

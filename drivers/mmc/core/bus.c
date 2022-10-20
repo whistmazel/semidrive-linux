@@ -300,6 +300,7 @@ int mmc_add_card(struct mmc_card *card)
 
 	dev_set_name(&card->dev, "%s:%04x", mmc_hostname(card->host), card->rca);
 
+	printk("mmc :card type:%d \n",card->type);
 	switch (card->type) {
 	case MMC_TYPE_MMC:
 		type = "MMC";

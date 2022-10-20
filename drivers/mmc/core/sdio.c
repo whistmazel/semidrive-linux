@@ -1091,6 +1091,7 @@ int mmc_attach_sdio(struct mmc_host *host)
 
 	WARN_ON(!host->claimed);
 
+        printk("%s %d \n",__func__,__LINE__);
 	err = mmc_send_io_op_cond(host, 0, &ocr);
 	if (err)
 		return err;
