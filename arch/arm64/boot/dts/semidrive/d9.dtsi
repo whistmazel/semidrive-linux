@@ -138,7 +138,7 @@
 			reg-io-width=<4>;
 			interrupts = <0 24 4>;
 			clock-frequency=<60000000>;
-			clocks = <&UART_SEC0_9>;
+/*			clocks = <&UART_SEC0_9>;*/
 			clock-names = "baudclk";
 			status = "disabled";
 		};
@@ -150,7 +150,7 @@
 			reg-io-width=<4>;
 			interrupts = <0 25 4>;
 			clock-frequency=<60000000>;
-			clocks = <&UART_SEC1_10>;
+/*			clocks = <&UART_SEC1_10>;*/
 			clock-names = "baudclk";
 			status = "disabled";
 		};
@@ -162,7 +162,7 @@
 			reg-io-width=<4>;
 			interrupts = <0 26 4>;
 			clock-frequency=<60000000>;
-			clocks = <&UART_SEC0_11>;
+/*			clocks = <&UART_SEC0_11>;*/
 			clock-names = "baudclk";
 			status = "disabled";
 		};
@@ -174,7 +174,7 @@
 			reg-io-width=<4>;
 			interrupts = <0 27 4>;
 			clock-frequency=<60000000>;
-			clocks = <&UART_SEC1_12>;
+/*			clocks = <&UART_SEC1_12>;*/
 			clock-names = "baudclk";
 			status = "disabled";
 		};
@@ -186,7 +186,7 @@
 			reg-io-width=<4>;
 			interrupts = <0 28 4>;
 			clock-frequency=<60000000>;
-			clocks = <&UART_SEC0_13>;
+/*			clocks = <&UART_SEC0_13>;*/
 			clock-names = "baudclk";
 			status = "disabled";
 		};
@@ -198,7 +198,7 @@
 			reg-io-width=<4>;
 			interrupts = <0 29 4>;
 			clock-frequency=<60000000>;
-			clocks = <&UART_SEC1_14>;
+/*			clocks = <&UART_SEC1_14>;*/
 			clock-names = "baudclk";
 			status = "disabled";
 		};
@@ -210,7 +210,7 @@
 			reg-io-width=<4>;
 			interrupts = <0 30 4>;
 			clock-frequency=<60000000>;
-			clocks = <&UART_SEC0_15>;
+/*			clocks = <&UART_SEC0_15>;*/
 			clock-names = "baudclk";
 			status = "disabled";
 		};
@@ -222,7 +222,7 @@
 			reg-io-width=<4>;
 			interrupts = <0 31 4>;
 			clock-frequency=<60000000>;
-			clocks = <&UART_SEC1_16>;
+/*			clocks = <&UART_SEC1_16>;*/
 			clock-names = "baudclk";
 			status = "disabled";
 		};
@@ -377,7 +377,7 @@
 			clock-frequency = <398000000>;
 			clocks=<&PWM8>;
 			clock-names = "plbkclk";
-			status = "disabled";
+			status = "okay";
 		};
 
 		i2c0:i2c@300b0000 {
@@ -386,7 +386,7 @@
 			interrupts = <0 32 4>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			//clocks=<&I2C_SEC0_5>;
+			clocks=<&I2C_SEC0_5>;
 			clock-names = "i2c-clk";
 			#clock-frequency = <100000>;
 			timeout = <10>; /* ms */
@@ -1219,6 +1219,20 @@
 			};
 		};
 
+		ospi1: spi@30020000 {
+			compatible = "sdrv,ospi-nor";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0 0x30020000 0 0x10000>,
+					<0 0x4000000 0 0x4000000>;
+			interrupts = <GIC_SPI 56 IRQ_TYPE_LEVEL_HIGH>;
+			cdns,fifo-depth = <256>;
+			cdns,fifo-width = <4>;
+			cdns,trigger-address = <0x3fffe00>;
+			clocks = <&OSPI1>;
+			status = "disabled";
+		};
+
 		ospi2: spi@306d0000 {
 			compatible = "sdrv,ospi-nor";
 			#address-cells = <1>;
@@ -1335,11 +1349,25 @@
 
 		dcf_vircan0:dcf_vircan@0 {
 			compatible = "dcf,vircan0";
-			status = "disabled";
+			status = "okay";
 		};
 
 		dcf_vircan1:dcf_vircan@1 {
 			compatible = "dcf,vircan1";
+			status = "okay";
+		};
+
+		flexcan0: can@30030000 {
+			compatible = "semidrive,flexcan";
+			reg = <0x0 0x30030000 0x0 0x10000>;
+			interrupts = <GIC_SPI 118 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
+		flexcan1: can@30040000 {
+			compatible = "semidrive,flexcan";
+			reg = <0x0 0x30040000 0x0 0x10000>;
+			interrupts = <GIC_SPI 119 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
 		};
 
@@ -1541,7 +1569,7 @@
 				compatible = "snps,dwmac-mdio";
 				#address-cells = <1>;
 				#size-cells = <0>;
-				reset-gpios = <&port4a 27 GPIO_ACTIVE_LOW> ;//ospidata1 io27 ae24
+				//reset-gpios = <&port4d 11 GPIO_ACTIVE_LOW> ;//gpio107
 				eth_phy1: ethernet-phy@1 {
 					compatible = "ethernet-phy-ieee802.3-c22";
 					reg = <0>;
@@ -1555,7 +1583,7 @@
 			interrupts = <GIC_SPI 105 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&ENET2_TX>;
 			clock-names = "stmmaceth";
-			/*phy-handle = <&eth_phy2>;*/
+			phy-handle = <&eth_phy2>;
 			phy-mode = "rgmii";
 			snps,force_sf_dma_mode;
 			snps,force_disable_asp;
@@ -1563,21 +1591,22 @@
 			tx-fifo-depth = <0x2000>;
 			status = "disabled";
 
-			/*mdio2: mdio@2 {
+			mdio2: mdio@2 {
 				compatible = "snps,dwmac-mdio";
 				#address-cells = <1>;
 				#size-cells = <0>;
-
+				//reset-gpios = <&port4d 12 GPIO_ACTIVE_LOW> ;//gpio108
 				eth_phy2: ethernet-phy@2 {
-					compatible = "ethernet-phy-ieee802.3-c45";
-					reg = <7>;
+					//compatible = "ethernet-phy-ieee802.3-c45";
+					compatible = "ethernet-phy-ieee802.3-c22";
+					reg = <0>;
 				};
-			};*/
-		fixed-link {
+			};
+		/*fixed-link {
 			speed = <1000>;
 			full-duplex;
 
-		   };
+		   };*/
 		};
 
 		gpio4: gpio@30420000 {

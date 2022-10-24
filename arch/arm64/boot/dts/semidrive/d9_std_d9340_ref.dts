@@ -22,15 +22,15 @@
 	compatible = "semidrive,kunlun";
 
 	aliases {
-		serial0 = &uart14;
+		serial0 = &uart14;//linux debug uart
 		serial1 = &uart0;
 		serial2 = &uart1;
 		//serial3 = &uart2;//safety debug uart
 		serial4 = &uart3;
 		serial5 = &uart4;
 		serial6 = &uart5;
-		serial7 = &uart6; /* no use */
-		serial8 = &uart7; /* no use */
+		serial7 = &uart6; 
+		serial8 = &uart7; 
 		serial9 = &uart8;
 		//serial10 = &uart9;//sec ssystem debug uart
 		serial11 = &uart10;
@@ -42,6 +42,8 @@
 		ethernet1 = &ethernet1;
 		ethernet2 = &ethernet2;
 		spi6 = &spi5;
+		spi7 = &spi6;
+		spi8 = &spi7;
 	};
 
 	memory@50000000 {
@@ -142,16 +144,22 @@
 	sound_es7144: sound@es7144 {
 		compatible = "semidrive,d9-ref-es7144";
 		semidrive,audio-codec = <&es7134>;
-		semidrive,jack-gpio = <&port4b 29 GPIO_ACTIVE_HIGH>;
+		//semidrive,jack-gpio = <&port4b 29 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 	};
 
 	leds {
 		compatible = "gpio-leds";
 		status = "okay";
-		led0: heartbeat {
-			label = "heartbeat";
-			gpios = <&port4a 4 GPIO_ACTIVE_LOW> ;//sch-part-D6<->gpio_a4
+		led0: led0 {
+			label = "debug";
+			gpios = <&port4c 15 GPIO_ACTIVE_LOW> ;//GPIO_D15 - gpio79
+			default-state = "on";
+			linux,default-trigger = "heartbeat";
+		};
+		led1: led1 {
+			label = "run";
+			gpios = <&port4d 14 GPIO_ACTIVE_HIGH> ;//GPIO_G6 - gpio110
 			default-state = "on";
 			linux,default-trigger = "heartbeat";
 		};
@@ -162,9 +170,9 @@
 		compatible = "gpio-keys";
 		autorepeat;
 		up {
-			label = "GPIO Key POWER";
+			label = "usr";
 			linux,code = <KEY_POWER>;//KEY_POWER
-			gpios = <&port4d 28 GPIO_ACTIVE_LOW> ;//sch-part-J8<->gpio_H2 io124 Y7
+			gpios = <&port4b 29 GPIO_ACTIVE_LOW> ;//sch-part-S1<->gpio_C13 - gpio61
 		};
 	};
 
@@ -229,7 +237,21 @@
 		default-brightness-level = <70>;
 		status = "okay";
 	};
-
+	watchdog: watchdog {
+		// SGM820B
+		compatible = "linux,wdt-gpio";
+		gpios = <&port4a 17 GPIO_ACTIVE_LOW>;//gpio17 - GPIO_B5 / GPIO_B4
+		hw_algo = "toggle";
+		always-running;
+		hw_margin_ms = <1000>;
+	};
+	clocks {
+		clk_ext_camera: clk-ext-camera {
+			#clock-cells = <0>;
+			compatible = "fixed-clock";
+			clock-frequency = <24000000>;
+		};
+	};
 };
 
 &dmac4 {
@@ -269,6 +291,16 @@
 	status = "disabled";
 };
 
+/*&csi0 {
+	fsl,mipi-mode;
+	status = "okay";
+	port {
+		csi1_ep: endpoint {
+			remote-endpoint = <&csi1_mipi_ep>;
+		};
+	};
+};*/
+
 &csi0 {
 	mbus-type = "mipi-csi2";
 	pclk-sample = <1>;
@@ -280,6 +312,7 @@
 				remote-endpoint = <&csimipi0_0_out>;
 			};
 		};
+
 		csi0_stream1: port@1 {
 			csi0_stream1_in: endpoint@0 {
 				remote-endpoint = <&csimipi0_1_out>;
@@ -312,6 +345,29 @@
 
 	};
 };
+/*
+&csimipi0 {
+	status = "okay";
+	lanerate = <72000000>;
+	hsa = <10>;
+	hbp = <20>;
+	hsd = <0x60>;
+	output-type = <0x1e>;
+
+	port {
+		mipi1_sensor_ep: endpoint1 {
+			remote-endpoint = <&ov5640_mipi1_ep>;
+			data-lanes = <2>;
+			csis-hs-settle = <13>;
+			csis-clk-settle = <2>;
+			csis-wclk;
+		};
+
+		csi1_mipi_ep: endpoint2 {
+			remote-endpoint = <&csi1_ep>;
+		};
+	};
+};*/
 
 &csimipi0 {
 	status = "okay";
@@ -338,6 +394,7 @@
 				reg = <0>;
 			};
 		};
+
 		port@1 {
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -399,29 +456,61 @@
 	};
 };
 
+&dcf_vircan0 {
+	status = "okay";
+};
+
+&dcf_vircan1 {
+	status = "okay";
+};
+
+&flexcan0 {
+	clocks = <&CAN5_TO_20>, <&CAN5_TO_20>;
+	clock-names = "per", "ipg";
+	assigned-clocks = <&CAN5_TO_20>, <&CAN5_TO_20>;
+	assigned-clock-rates = <80000000>, <80000000>;
+	status = "okay";
+};
+
+&flexcan1 {
+	clocks = <&CAN5_TO_20>, <&CAN5_TO_20>;
+	clock-names = "per", "ipg";
+	assigned-clocks = <&CAN5_TO_20>, <&CAN5_TO_20>;
+	assigned-clock-rates = <80000000>, <80000000>;
+	status = "okay";
+};
+
+&i2c0 {
+		status = "okay";
+		flash@50 {
+			compatible = "atmel,24c256";
+			reg = <0x50>;
+			//pagesize = <64>;
+		};
+};
+
 &i2c2 {
-        status = "disabled";
+        status = "okay";
+		rx8025t: rx8025t@32 {
+		compatible = "epson,rx8025";
+		reg = <0x32>;
+    };
 };
 
 &i2c3 {
 //sch part U22(pvt sgm452t)
-	status = "okay";
+	status = "disabled";
 	dtt@4f {
 		compatible = "sgmicro,sgm452";
 		reg = <0x4f>;
 	};
-
-	rx8025t: rx8025t@32 {
-		compatible = "epson,rx8025";
-		reg = <0x32>;
-        };
+	
 };
 &i2c4 {
-	status = "okay";
+	status = "disabled";
 	ksz9896c:ksz9896c@5f {
 		compatible = "switch,ksz9896c";
-		ksz9896c,reset-gpio = <&port4b 24 GPIO_ACTIVE_LOW>;
-		ksz9896c,pwdn-gpio =  <&port4b 28 GPIO_ACTIVE_LOW>;
+		//ksz9896c,pwdn-gpio =  <&port4b 28 GPIO_ACTIVE_LOW>;
 		//gpios = <&port4d 28 GPIO_ACTIVE_LOW> ;//sch-part-J8<->gpio_H2 io124 Y7
 
 		reg = <0x5f>;
@@ -429,7 +518,7 @@
 };
 
 &i2c5 {
-	status = "okay";
+	status = "disabled";
 	es7243e: codec@10 {
 		compatible = "MicArray_0";
 		reg = <0x10>;
@@ -438,7 +527,7 @@
 
 &i2c6 {
 //sch part U5(tp2850)
-	status = "okay";
+	status = "disabled";
 	dvp_tp2850:dvp_tp2850@44 {
 		compatible = "tp,tp2850";
 		reg = <0x44>;
@@ -459,16 +548,32 @@
 };
 
 &i2c8 {
-//sch part U3(N4)
 	status = "okay";
-
-	mcsi0deser:mcsi0deser@31 {
-		compatible = "nextchip,n4";
-		reg = <0x31>;
-		sync = <0>;
-		pwdn-gpios = <&port4d 27 GPIO_ACTIVE_HIGH>;//index(123) gpio h1
-		rst-gpios = <&port4c 15 GPIO_ACTIVE_HIGH>;//index(79) gpio D15
-		//semidrive,poc = <&i2c9>;
+};
+/*
+&i2c9 {
+	status = "okay";
+	
+	ov5640_mipi: ov5640_mipi@3c {
+		compatible = "ovti,ov5640_mipi";
+		reg = <0x3c>;
+		status = "okay";
+		//clocks = <&CSI_MCLK1>;
+		clocks = <&clk_ext_camera>;
+		clock-names = "csi_mclk";
+		//clock-frequency = <12000000>;
+		mclk = <24000000>;
+		mclk_source = <0>;
+		//sync = <0>;
+		csi_id = <0>;
+		gate-gpios = <&port4d 20 GPIO_ACTIVE_HIGH>;//GPIO_G12 - gpio116
+		pwn-gpios = <&port4d 18 GPIO_ACTIVE_HIGH>;//GPIO_G10 - gpio114
+		rst-gpios = <&port4d 19 GPIO_ACTIVE_HIGH>;//GPIO_G11 - gpio115
+		port {
+			ov5640_mipi1_ep: endpoint {
+				remote-endpoint = <&mipi1_sensor_ep>;
+			};
+		};
 		ports {
 			port@0 {
 				#address-cells = <1>;
@@ -478,6 +583,7 @@
 					remote-endpoint = <&csimipi0_0_in>;
 				};
 			};
+
 			port@1 {
 				#address-cells = <1>;
 				#size-cells = <0>;
@@ -504,36 +610,62 @@
 			};
 		};
 	};
-};
+};*/
 
 &i2c9 {
-	status = "disabled";
+//sch part U3(N4)
+	status = "okay";
 
-	dvp_deser:dvp_deser@7E {
-		compatible = "sdrv,dvp_deser";
-		clock-frequency = <24000000>;
-		reg = <0x7E>;
-		//powerdown-gpios = <&cam_gpios 11 0>;
-		//gpi-gpios = <&cam_gpios 10 0>;
-		pwdn-gpios = <&port4c 19 0>;
-		//poc-gpios = <&cam_gpios 6 0>;
-		//gpi-gpios = <&ext_gpio74 10 0>;
-		port {
-			#address-cells = <1>;
-			#size-cells = <0>;
+	ov5640:ov5640@3c {
+		compatible = "ovti,ov5640";
+		clocks = <&CSI_MCLK1>;
+		clock-names = "csi-mclk";
+		clock-frequency = <12000000>;
+		reg = <0x3c>;
+		powerdown-gpios = <&port4d 18 GPIO_ACTIVE_HIGH>;//GPIO_G10 - gpio114
+		reset-gpios = <&port4d 19 GPIO_ACTIVE_HIGH>;//GPIO_G11 - gpio115
 
-			dvpdeser_to_parallel: endpoint {
-				remote-endpoint = <&csiparallel0_in>;
+		ports {
+			port@0 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				mcsi0deser_to_mipi_0: endpoint {
+					remote-endpoint = <&csimipi0_0_in>;
+				};
+			};
+
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				mcsi0deser_to_mipi_1: endpoint {
+					remote-endpoint = <&csimipi0_1_in>;
+				};
+			};
+			port@2 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				mcsi0deser_to_mipi_2: endpoint {
+					remote-endpoint = <&csimipi0_2_in>;
+				};
+			};
+			port@3 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				mcsi0deser_to_mipi_3: endpoint {
+					remote-endpoint = <&csimipi0_3_in>;
+				};
 			};
 		};
 	};
-};
+};		
 
 &i2c10 {
 //sch part U7(LT9611)
 	status = "disabled";
-
-
 };
 
 &i2c11 {
@@ -567,20 +699,15 @@
 };
 
 &spi5 {
-//sch core part U1502(IS62WVS5128GBL)
 	dmas = <&dmac4 X9_DMA_SLV_ID_SPI6_TX>, <&dmac4 X9_DMA_SLV_ID_SPI6_RX>;
 	dma-names = "tx", "rx";
 	status = "okay";
-	spi_is62w@0 {
-		compatible = "iram,is62w-spi-0";
+	spidev@0{
+		#address-cellss=<1>;
+		#size-cells=<1>;
+		compatible = "rohm,dh2228fv";
+		spi-max-frequency = <48000000>;
 		reg = <0>;
-		spi-max-frequency = <30000000>;
-		page_size = <32>;
-		page_num = <0x4000>;
-		die_num = <2>;
-		poll_mode = <0>;
-		type = <0>;
-		enable_dma = <0>;
 	};
 };
 
@@ -589,7 +716,16 @@
 };
 
 &spi7 {
-	status = "disabled";
+	dmas = <&dmac4 X9_DMA_SLV_ID_SPI8_TX>, <&dmac4 X9_DMA_SLV_ID_SPI8_RX>;
+	dma-names = "tx", "rx";
+	status = "okay";
+	spidev@0{
+		#address-cellss=<1>;
+		#size-cells=<1>;
+		compatible = "rohm,dh2228fv";
+		spi-max-frequency = <48000000>;
+		reg = <0>;
+	};
 };
 
 &uart14 {
@@ -600,33 +736,18 @@
 };
 
 &uart0 {
-//xm1 --need flip
 	status = "disabled";
 };
 
 &uart1 {
-//rs485
-//sch part u28 sit3485
+	//rs232 - 2
 	snps,dma-not-used;
-	snps,config-as-485-function;
-	snps,485_re_polarity_val = <0>;
-	snps,485_de_polarity_val = <1>;
-
-	/*  0: full duplex
-	 *  1: software half duplex
-	 *  2: hardware half duplex
-	 */
-	snps,485_xfer_mode = <0>; /* sit3485 support full duplex only */
-	snps,485_de_assert_time = <0x32>;
-	snps,485_de_deassert_time = <0xf>;
-	snps,485_de2re_turn_around_time = <0x51>;
-	snps,485_re2de_turn_around_time = <0x38>;
 	status = "okay";
 };
 
 //&uart2 {
-//saf debug uart,we not use for ever
-//	status = "disabled";
+	//safety debug uart -3
+//	status = "okay";
 //};
 
 &uart3 {
@@ -638,19 +759,34 @@
 };
 
 &uart5 {
-//rs232
-//sch part u29 sit3232
+	//rs232 - 6
 	snps,dma-not-used;
 	status = "okay";
 };
 
+&uart6 {
+	//rs485 - 7
+	//sch part u28 sit3485
+	snps,dma-not-used;
+	sdrv,config_gpio_ctrl_485;
+	sdrv,485_re_gpio = <&port4b 1 0>;//gpio33
+	sdrv,485_de_gpio = <&port4b 1 0>;
+	sdrv,485_re_polarity_val = <0>;
+	sdrv,485_de_polarity_val = <1>;
+	status = "okay";
+};
+
+&uart7 {
+	status = "disabled";
+};
+
 &uart8 {
-//sch part xm1 --need flip
+	//ext - 9
 	status = "disabled";
 };
 
 &uart9 {
-//sec debug
+	//sec ssystem debug uart
 	status = "disabled";
 };
 
@@ -659,23 +795,26 @@
 };
 
 &uart11 {
-//sch part xm7 --need flip
-	status = "disabled";
+//rs485
+	snps,dma-not-used;
+	sdrv,config_gpio_ctrl_485;
+	sdrv,485_re_gpio = <&port4b 24 0>;//gpio56
+	sdrv,485_de_gpio = <&port4b 24 0>;
+	sdrv,485_re_polarity_val = <0>;
+	sdrv,485_de_polarity_val = <1>;
+	status = "okay";
 };
 
 &uart12 {
-//sch part xm5 --need flip
 	status = "disabled";
 };
 
 &uart13 {
-//sch part xm6 --need flip
-	status = "disabled";
+	//wifi-ble - 14
+	status = "okay";
 };
 
-
 &uart15 {
-//sch part xm8 --need flip
 	status = "disabled";
 };
 
@@ -779,6 +918,27 @@
 	status = "okay";
 };
 
+&ospi1 {
+	status = "okay";
+	flash0: mt25qu128aba@0 {
+		reg = <0>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "jedec,spi-nor";
+		spi-max-frequency = <66000000>;
+
+		m25p,fast-read;
+		cdns,page-size = <256>;
+		cdns,block-size = <16>;
+		cdns,read-delay = <1>;
+		cdns,tshsl-ns = <50>;
+		cdns,tsd2d-ns = <50>;
+		cdns,tchsh-ns = <4>;
+		cdns,tslch-ns = <4>;
+	};
+	
+};
+
 &pinctrl {
 	reg = <0x0 0x37000000 0x0 0x10000>;
 	pinctrl-names = "default";
@@ -838,21 +998,35 @@
 	status = "okay";
 };
 
-&sdhci3 {
+&sdhci2 {
 	#clock-cells = <1>;
-	clocks = <&EMMC3>;
+	clocks = <&EMMC2>;
 	clock-names = "core";
-	max-frequency = <100000000>;
-	cd-gpios = <&port4a 1 GPIO_ACTIVE_LOW>;//sch-part-D6<->gpio_a1 io1 Y19
-	pwr-gpios = <&port4b 25 GPIO_ACTIVE_HIGH>;//gpio_c9
+	//max-frequency = <50000000>;
 	bus-width = <4>;
 	no-mmc;
-	no-sdio;
+	no-sd;
 	disable-wp;
 	keep-power-in-suspend;
 	cap-sd-highspeed;
-	sd-uhs-sdr104;
 	status = "okay";
+};
+
+&sdhci3 {
+	// #clock-cells = <1>;
+	// clocks = <&EMMC3>;
+	// clock-names = "core";
+	// max-frequency = <100000000>;
+	// cd-gpios = <&port4b 30 GPIO_ACTIVE_LOW>;//gpio62 - GPIO_C14
+	// //pwr-gpios = <&port4b 25 GPIO_ACTIVE_HIGH>;//gpio_c9
+	// bus-width = <4>;
+	// no-mmc;
+	// no-sdio;
+	// disable-wp;
+	// keep-power-in-suspend;
+	// cap-sd-highspeed;
+	// sd-uhs-sdr104;
+	status = "disabled";
 };
 
 &mbox {
@@ -889,7 +1063,7 @@
 
 
 &rtc {
-	status = "okay";
+	status = "disabled";
 };
 
 &usbdrd3_0 {
@@ -897,7 +1071,7 @@
 };
 
 &usb3_id0 {
-	id-gpios = <&port4e 3 GPIO_ACTIVE_LOW>;
+	//id-gpios = <&port4e 3 GPIO_ACTIVE_LOW>;
 };
 
 &usb0 {
@@ -919,6 +1093,7 @@
 };
 
 &ethernet2 {
+	snps,max_dma_cap_quirk = <32>;
 	status = "okay";
 };
 
@@ -988,16 +1163,10 @@
 };
 
 &pcie1 {
+	// smdrv,link_count = <20000>;
+	// resets = <&rstgen RSTGEN_MODULE_PCIE1>;
+	// reset-names = "pcie-reset";
 	status = "okay";
-
-	endpoint {
-		#address-cells = <1>;
-		#size-cells = <0>;
-		brcmf@1 {
-			reg = <1>;
-			compatible = "brcm,bcm4329-fmac";
-		};
-        };
 };
 
 &vce2 {
