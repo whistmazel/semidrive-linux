@@ -743,7 +743,7 @@ static struct flexcan_mb __iomem *flexcan_get_mb(const struct flexcan_priv *priv
 }
 
 static unsigned int flexcan_mailbox_read(struct can_rx_offload *offload,
-					 struct can_frame *cf,
+					 struct canfd_frame *cf,
 					 u32 *timestamp, unsigned int n)
 {
 	struct flexcan_priv *priv = rx_offload_to_priv(offload);
@@ -969,7 +969,7 @@ static void flexcan_set_bittiming(struct net_device *dev)
 	const struct can_bittiming *bt = &priv->can.bittiming;
 	const struct can_bittiming *dbt = &priv->can.data_bittiming;
 	struct flexcan_regs __iomem *regs = priv->regs;
-	u32 ctrl,cbt;
+	u32 ctrl, cbt;
 
 	ctrl = flexcan_read(&regs->ctrl);
 	ctrl &= ~(FLEXCAN_CTRL_PRESDIV(0xff) |
