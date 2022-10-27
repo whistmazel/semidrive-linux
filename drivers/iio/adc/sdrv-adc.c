@@ -491,7 +491,7 @@ static void sdrv_adc_hw_init(struct sdrv_adc *info, bool extref, bool differenti
 	sdrv_adc_set_interval(info, 0x20);
 	sdrv_adc_set_convert_mode(info, ADC_SINGLE_CH_SINGLE_E0);
 	sdrv_adc_init_convert(info);
-	sdrv_adc_stop_continuous(info, true);
+	sdrv_adc_stop_continuous(info, false);
 }
 
 static void sdrv_adc_channel_set(struct sdrv_adc *info)
