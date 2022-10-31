@@ -377,7 +377,7 @@
 			clock-frequency = <398000000>;
 			clocks=<&PWM8>;
 			clock-names = "plbkclk";
-			status = "okay";
+			status = "disabled";
 		};
 
 		i2c0:i2c@300b0000 {
@@ -1071,8 +1071,8 @@
 			#clock-cells = <1>;
 			clocks = <&EMMC2>;
 			clock-names = "core";
-			max-frequency = <200000000>;
-			vmmc-supply = <&vmmc_3v3>;
+			max-frequency = <100000000>;
+			//vmmc-supply = <&vmmc_3v3>;
 			vqmmc-supply = <&vqmmc_1v8>;
 			status = "disabled";
 		};
@@ -1349,12 +1349,12 @@
 
 		dcf_vircan0:dcf_vircan@0 {
 			compatible = "dcf,vircan0";
-			status = "okay";
+			status = "disabled";
 		};
 
 		dcf_vircan1:dcf_vircan@1 {
 			compatible = "dcf,vircan1";
-			status = "okay";
+			status = "disabled";
 		};
 
 		flexcan0: can@30030000 {
@@ -1407,6 +1407,11 @@
 				crtc0_out_interface: endpoint@0 {
 					remote-endpoint = <&parallel_in_crtc0>;
 				};
+				
+				 crtc1_out_interface: endpoint@1 {
+                        		remote-endpoint = <&parallel_in_crtc1>;
+                		};
+
 			};
 		};
 
@@ -1430,6 +1435,31 @@
 					parallel_out_timing0: endpoint@0 {
 						reg = <0>;
 						remote-endpoint = <&parall_panel0_in>;
+					};
+				};
+			};
+		};
+		
+		parallel1: parallel@1 {
+			compatible = "semidrive, kunlun-display-parallel";
+			status = "disabled";
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				parallel1_in: port@0 {
+					parallel_in_crtc1: endpoint@0 {
+						remote-endpoint = <&crtc1_out_interface>;
+					};
+				};
+
+				parallel1_out: port@1 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <1>;
+					parallel_out_timing1: endpoint@0 {
+						reg = <0>;
+						remote-endpoint = <&parall_panel1_in>;
 					};
 				};
 			};
@@ -1466,7 +1496,7 @@
 				};
 			};
 		};
-/*
+
 		lvds1: lvds1@30670000 {
 			compatible = "semidrive, kunlun-display-lvds";
 			reg = <LVDS_BASE LVDS_RANGE>;
@@ -1483,7 +1513,7 @@
 				#size-cells = <0>;
 				lvds1_in: port@0 {
 					lvds_in_crtc1: endpoint@0 {
-						remote-endpoint = <&crtc1_out_interface>;
+						remote-endpoint = <&crtc0_out_interface>;
 					};
 				};
 
@@ -1493,12 +1523,12 @@
 					reg = <1>;
 					lvds_out_timing1: endpoint@0 {
 						reg = <0>;
-						remote-endpoint = <&parall_panel1_in>;
+						remote-endpoint = <&parall_panel0_in>;
 					};
 				};
 			};
 		};
-*/
+
 		dsi0: dsi0@30D60000 {
 			compatible = "semidrive,dsi-host";
 			reg = <0x0 0x30d60000 0x0 0x10000>;
@@ -1533,6 +1563,11 @@
 		ptimings1: parallel-timings@1 {
 			compatible = "semidrive,panel-simple";
 			status = "disabled";
+			port {
+				parall_panel1_in: endpoint {
+					remote-endpoint = <&parallel_out_timing1>;
+				};
+			};
 
 			dtimings1: display-timings {
 			};

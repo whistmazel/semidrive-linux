@@ -17,7 +17,7 @@
 #include "lcd_hsd123_serdes_mipi_1920x720.dtsi"
 
 / {
-	model = "Semidrive kunlun D9 REF Board";
+	model = "MYD-JD9340 kunlun D9 REF Board";
 
 	compatible = "semidrive,kunlun";
 
@@ -350,14 +350,6 @@
 	};
 };
 
-&dcf_vircan0 {
-	status = "okay";
-};
-
-&dcf_vircan1 {
-	status = "okay";
-};
-
 &flexcan0 {
 	clocks = <&CAN5_TO_20>, <&CAN5_TO_20>;
 	clock-names = "per", "ipg";
@@ -438,10 +430,6 @@
 };
 
 &i2c7 {
-	status = "disabled";
-};
-
-&i2c8 {
 	status = "disabled";
 };
 
@@ -615,19 +603,6 @@
 &uart13 {
 	//wifi-ble - 14
 	snps,dma-not-used;
-	snps,config-as-485-function;
-	snps,485_re_polarity_val = <0>;
-	snps,485_de_polarity_val = <1>;
-
-	/*  0: full duplex
-	 *  1: software half duplex
-	 *  2: hardware half duplex
-	 */
-	snps,485_xfer_mode = <0>; /* sit3485 support full duplex only */
-	snps,485_de_assert_time = <0x32>;
-	snps,485_de_deassert_time = <0xf>;
-	snps,485_de2re_turn_around_time = <0x51>;
-	snps,485_re2de_turn_around_time = <0x38>;
 	status = "okay";
 };
 
