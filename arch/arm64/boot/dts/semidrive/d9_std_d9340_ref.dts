@@ -669,6 +669,10 @@
 	status = "okay";
 };
 
+// &parallel1 {
+// 	status = "okay";
+// };
+
 &dtimings0 {
 	native-mode = <&vesa_fhd1920x1080>;
 };
@@ -707,6 +711,13 @@
 
 &display {
 	sdriv,crtc = <&crtc0>;
+	status = "okay";
+};
+
+&lvds0 {
+	status = "okay";
+};
+&lvds1 {
 	status = "okay";
 };
 
