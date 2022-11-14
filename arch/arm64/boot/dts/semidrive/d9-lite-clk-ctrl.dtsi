@@ -137,7 +137,7 @@
 	status = "okay";
 };
 &SPI_SEC1_8 {
-	status = "disabled";
+	status = "okay";
 };
 &UART_SEC0 {
 	status = "okay";
@@ -177,7 +177,7 @@
 };
 
 &EMMC2 {
-	status = "disabled";
+	status = "okay";
 };
 
 &EMMC3 {
@@ -224,6 +224,10 @@
 	status = "disabled";
 };
 
+&OSPI1 {
+        status = "okay";
+};
+
 &TIMER3 {
 	status = "disabled";
 };
@@ -265,11 +269,11 @@
 };
 
 &PWM7 {
-	status = "disabled";
+	status = "okay";
 };
 
 &PWM8 {
-	status = "disabled";
+	status = "okay";
 };
 
 &I2S_MCLK2 {

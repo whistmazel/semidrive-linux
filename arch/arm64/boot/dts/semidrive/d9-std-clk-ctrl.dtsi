@@ -135,7 +135,7 @@
 	status = "okay";
 };
 &SPI_SEC1_8 {
-	status = "disabled";
+	status = "okay";
 };
 &UART_SEC0 {
 	status = "okay";
